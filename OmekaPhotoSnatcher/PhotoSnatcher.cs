@@ -24,13 +24,17 @@ namespace OmekaPhotoSnatcher
             foreach (var item in oJson) 
             {
                 string url = item["files"]["url"];
-                string filename = "Item_" + item["id"].ToString("0000") + ".jpg";
+                string filenameShort = "Item_" + item["id"].ToString("0000");
+                int count = item["files"]["count"];
+                if (count != 0)
+                {
+                    GetApiResponse(url, filenameShort).Wait();
+                }
                 
-                GetApiResponse(url, filename).Wait();
             }
             
         }
-        public static async Task GetApiResponse(string url, string filename)
+        public static async Task GetApiResponse(string url, string filenameShort)
         {
             try
             {
@@ -39,9 +43,24 @@ namespace OmekaPhotoSnatcher
                 string responseBody = await response.Content.ReadAsStringAsync();
 
                 var oResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<dynamic>(responseBody);
-                string originalUrl = oResponse[0]["file_urls"]["original"];
+                int count = oResponse.Count;
+                string filename = filenameShort + ".jpg";
 
-                SaveImage(originalUrl, filename).Wait();
+                for (int i = 0; i < count; i++)
+                {
+                    string originalUrl = oResponse[i]["file_urls"]["original"];
+
+                    if (count > 1)
+                    {
+                        int x = i + 1;
+                        filename = filenameShort + "_" + x + ".jpg";
+                    }
+                    
+
+                    SaveImage(originalUrl, filename).Wait();
+
+                }
+                
 
 
             }
@@ -49,14 +68,18 @@ namespace OmekaPhotoSnatcher
             {
                 if (e.Message == "Response status code does not indicate success: 429 (Too Many Requests).")
                 {
+                    Logger.WriteLine("\nException Caught!");
+                    Logger.WriteLine("Message : " + e.Message);
+                    Logger.WriteLine(filenameShort);
+                    Logger.SaveLog();
                     Thread.Sleep(1000);
-                    GetApiResponse(url, filename).Wait();
+                    GetApiResponse(url, filenameShort).Wait();
                 }
                 else
                 {
                     Logger.WriteLine("\nException Caught!");
                     Logger.WriteLine("Message : " + e.Message);
-                    Logger.WriteLine(filename);
+                    Logger.WriteLine(filenameShort);
                     Logger.SaveLog();
                 }
                 
